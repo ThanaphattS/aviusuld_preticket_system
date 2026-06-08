@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Pre-Ticket System — AviusULD</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --bg-primary: #0a0a0b;
+    --bg-secondary: #111114;
+    --bg-card: #141418;
+    --border: #1e1e22;
+    --accent: #00c19f;
+    --accent-dim: rgba(0,193,159,0.12);
+    --accent-border: rgba(0,193,159,0.25);
+    --text-primary: #f0f0f0;
+    --text-muted: #666;
+    --text-placeholder: #444;
+    --input-bg: #0d0d10;
+    --input-border: #252528;
+    --radius-sm: 8px;
+    --radius-md: 12px;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    -webkit-font-smoothing: antialiased;
+  }
+  nav {
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border);
+    padding: 0 32px;
+    height: 64px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  nav img.logo { height: 40px; width: auto; object-fit: contain; display: block; }
+  .nav-badge {
+    font-size: 10px; font-weight: 600; letter-spacing: 0.8px;
+    text-transform: uppercase; color: var(--accent);
+    background: var(--accent-dim); border: 1px solid var(--accent-border);
+    padding: 4px 12px; border-radius: 20px;
+  }
+  main {
+    flex: 1; padding: 48px 24px 80px;
+    max-width: 680px; margin: 0 auto; width: 100%;
+  }
+  .page-header { text-align: center; margin-bottom: 40px; animation: fadeUp 0.5s ease both; }
+  .page-header h1 { font-size: 28px; font-weight: 600; letter-spacing: -0.5px; color: var(--text-primary); margin-bottom: 10px; }
+  .page-header p { font-size: 14px; color: var(--text-muted); line-height: 1.65; max-width: 440px; margin: 0 auto; }
+  .progress-bar { display: flex; align-items: center; justify-content: center; margin-bottom: 40px; animation: fadeUp 0.5s 0.1s ease both; }
+  .progress-step { display: flex; align-items: center; gap: 10px; }
+  .step-dot { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; flex-shrink: 0; }
+  .step-dot.active { background: var(--accent); color: #000; box-shadow: 0 0 16px rgba(0,193,159,0.4); }
+  .step-dot.inactive { background: #1a1a1e; color: var(--text-muted); border: 1px solid #2a2a2e; }
+  .step-label { font-size: 12px; font-weight: 500; white-space: nowrap; }
+  .step-label.active { color: var(--accent); }
+  .step-label.inactive { color: var(--text-muted); }
+  .step-line { width: 60px; height: 1px; background: #1e1e22; margin: 0 8px; flex-shrink: 0; }
+  .card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 28px; margin-bottom: 16px; animation: fadeUp 0.5s 0.15s ease both; }
+  .card:nth-child(2) { animation-delay: 0.2s; }
+  .card-header { display: flex; align-items: center; gap: 12px; margin-bottom: 24px; }
+  .card-accent { width: 3px; height: 22px; background: var(--accent); border-radius: 2px; flex-shrink: 0; }
+  .card-title { font-size: 11px; font-weight: 600; color: var(--accent); letter-spacing: 1px; text-transform: uppercase; }
+  .field { margin-bottom: 18px; }
+  .field:last-child { margin-bottom: 0; }
+  .field-label { font-size: 11px; font-weight: 500; color: var(--text-muted); letter-spacing: 0.4px; text-transform: uppercase; margin-bottom: 7px; display: flex; align-items: center; gap: 4px; }
+  .required { color: var(--accent); }
+  .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  input[type="text"], input[type="number"], select, textarea {
+    width: 100%; background: var(--input-bg); border: 1px solid var(--input-border);
+    border-radius: var(--radius-sm); padding: 11px 14px; color: var(--text-primary);
+    font-family: 'DM Sans', sans-serif; font-size: 14px; outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s; -webkit-appearance: none; appearance: none;
+  }
+  select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23666' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 14px center; padding-right: 36px;
+  }
+  input::placeholder { color: var(--text-placeholder); }
+  input:focus, select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(0,193,159,0.1); }
+  input.error, select.error { border-color: #e05555; box-shadow: 0 0 0 3px rgba(224,85,85,0.1); }
+  .field-error { font-size: 11px; color: #e05555; margin-top: 5px; display: none; }
+  .field-error.visible { display: block; }
+  .impact-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 18px; }
+  .impact-box { background: rgba(0,193,159,0.04); border: 1px solid var(--accent-border); border-radius: var(--radius-sm); padding: 16px; }
+  .impact-box .field-label { margin-bottom: 8px; }
+  .impact-box select, .impact-box input { background: transparent; border-color: rgba(255,255,255,0.07); }
+  .impact-box select:focus, .impact-box input:focus { border-color: var(--accent); background: var(--input-bg); }
+  .impact-divider { border: none; border-top: 1px solid var(--border); margin: 20px 0 0; }
+  .impact-label-text { font-size: 11px; font-weight: 600; color: var(--accent); letter-spacing: 0.8px; text-transform: uppercase; margin-bottom: 16px; margin-top: 20px; }
+  .unit-hint { font-size: 11px; color: var(--text-muted); margin-top: 5px; }
+  .submit-wrap { margin-top: 8px; animation: fadeUp 0.5s 0.25s ease both; }
+  .btn-submit {
+    width: 100%; background: var(--accent); color: #000; border: none;
+    border-radius: var(--radius-sm); padding: 15px 24px;
+    font-family: 'DM Sans', sans-serif; font-size: 15px; font-weight: 600;
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+    gap: 10px; transition: background 0.2s, transform 0.15s, box-shadow 0.2s;
+  }
+  .btn-submit:hover { background: #00d9b0; box-shadow: 0 4px 20px rgba(0,193,159,0.35); transform: translateY(-1px); }
+  .btn-submit:active { transform: translateY(0); }
+  .btn-submit:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+  .btn-arrow { font-size: 18px; transition: transform 0.2s; }
+  .btn-submit:hover .btn-arrow { transform: translateX(3px); }
+
+  /* SPINNER */
+  .spinner { width: 18px; height: 18px; border: 2px solid rgba(0,0,0,0.3); border-top-color: #000; border-radius: 50%; animation: spin 0.7s linear infinite; display: none; }
+  .btn-submit.loading .spinner { display: block; }
+  .btn-submit.loading .btn-text, .btn-submit.loading .btn-arrow { display: none; }
+
+  /* STATUS MESSAGE */
+  .status-msg { text-align: center; font-size: 13px; margin-top: 12px; min-height: 20px; }
+  .status-msg.error { color: #e05555; }
+  .status-msg.success { color: var(--accent); }
+
+  footer { text-align: center; padding: 24px; font-size: 12px; color: #555; border-top: 1px solid var(--border); line-height: 1.7; }
+  footer a { color: #555; text-decoration: none; }
+  footer a:hover { color: #888; }
+
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  @media (max-width: 600px) {
+    nav { padding: 0 20px; }
+    main { padding: 32px 16px 60px; }
+    .field-row { grid-template-columns: 1fr; }
+    .impact-grid { grid-template-columns: 1fr; }
+    .step-line { width: 32px; }
+    .step-label { display: none; }
+    .card { padding: 20px; }
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <img src="assets/logo.png" alt="AviusULD" class="logo"/>
+  <span class="nav-badge">BI Request Portal</span>
+</nav>
+
+<main>
+  <div class="page-header">
+    <h1>Pre-Ticket System</h1>
+    <p>Submit your answers about the change request you have for the System &amp; Innovation Team to review</p>
+  </div>
+
+  <div class="progress-bar">
+    <div class="progress-step">
+      <div class="step-dot active">1</div>
+      <span class="step-label active">Request Info</span>
+    </div>
+    <div class="step-line"></div>
+    <div class="progress-step">
+      <div class="step-dot inactive">2</div>
+      <span class="step-label inactive">Requestor</span>
+    </div>
+    <div class="step-line"></div>
+    <div class="progress-step">
+      <div class="step-dot inactive">✓</div>
+      <span class="step-label inactive">Confirmed</span>
+    </div>
+  </div>
+
+  <form id="requestForm" novalidate>
+
+    <!-- SECTION A -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-accent"></div>
+        <div class="card-title">Section A — Request Information</div>
+      </div>
+
+      <div class="field">
+        <label class="field-label" for="criteria">Criteria of Request <span class="required">*</span></label>
+        <select id="criteria" name="criteria">
+          <option value="">— Select —</option>
+          <option value="Modify">Modify</option>
+          <option value="New Development">New Development</option>
+        </select>
+        <div class="field-error" id="err-criteria">Please select a criteria.</div>
+      </div>
+
+      <div class="field">
+        <label class="field-label" for="requirement">Simple / Brief Requirement <span class="required">*</span></label>
+        <input type="text" id="requirement" name="requirement" placeholder="Describe the requested improvement or issue…"/>
+        <div class="field-error" id="err-requirement">Please enter a brief requirement.</div>
+      </div>
+
+      <div class="field-row">
+        <div class="field">
+          <label class="field-label" for="moscow">Priority <span class="required">*</span></label>
+          <select id="moscow" name="moscow">
+            <option value="">— Select —</option>
+            <option value="Must Have">Must Have</option>
+            <option value="Should Have">Should Have</option>
+            <option value="Nice To Have">Nice To Have</option>
+          </select>
+          <div class="field-error" id="err-moscow">Please select a priority.</div>
+        </div>
+        <div class="field">
+          <label class="field-label" for="urgency">Urgency <span class="required">*</span></label>
+          <select id="urgency" name="urgency">
+            <option value="">— Select —</option>
+            <option value="High">High</option>
+            <option value="Medium">Medium</option>
+            <option value="Low">Low</option>
+          </select>
+          <div class="field-error" id="err-urgency">Please select an urgency level.</div>
+        </div>
+      </div>
+
+      <div class="field">
+        <label class="field-label" for="userCount">Number of Users Who Will Utilize This Request <span class="required">*</span></label>
+        <input type="number" id="userCount" name="userCount" min="1" placeholder="e.g. 10"/>
+        <div class="field-error" id="err-userCount">Please enter the number of users.</div>
+      </div>
+
+      <hr class="impact-divider"/>
+      <div class="impact-label-text">Business Impact</div>
+      <div class="impact-grid">
+        <div class="impact-box">
+          <div class="field-label">Impact Type <span class="required">*</span></div>
+          <select id="impactType" name="impactType" onchange="updateUnit()">
+            <option value="">— Select —</option>
+            <option value="Cost Saving">Cost Saving</option>
+            <option value="Time Saving">Time Saving</option>
+          </select>
+          <div class="field-error" id="err-impactType">Please select an impact type.</div>
+        </div>
+        <div class="impact-box">
+          <div class="field-label">Estimated Saving <span class="required">*</span></div>
+          <input type="number" id="improvement" name="improvement" min="0" placeholder="e.g. 10"/>
+          <div class="unit-hint" id="unitHint">Enter amount</div>
+          <div class="field-error" id="err-improvement">Please enter an estimated value.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SECTION B -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-accent"></div>
+        <div class="card-title">Section B — Requestor Information</div>
+      </div>
+
+      <div class="field">
+        <label class="field-label" for="fullName">User Full Name <span class="required">*</span></label>
+        <input type="text" id="fullName" name="fullName" placeholder="Your full name"/>
+        <div class="field-error" id="err-fullName">Please enter your full name.</div>
+      </div>
+
+      <div class="field">
+        <label class="field-label" for="department">Department <span class="required">*</span></label>
+        <select id="department" name="department">
+          <option value="">— Select —</option>
+          <option value="Plant Management">Plant Management</option>
+          <option value="HR">HR</option>
+          <option value="Warehouse">Warehouse</option>
+          <option value="Facility and Maintenance">Facility and Maintenance</option>
+          <option value="Industrial Engineering">Industrial Engineering</option>
+          <option value="Engineering">Engineering</option>
+          <option value="Business Excellence / QA">Business Excellence / QA</option>
+          <option value="QC">QC</option>
+          <option value="HSE">HSE</option>
+          <option value="Planning">Planning</option>
+          <option value="Procurement">Procurement</option>
+          <option value="Import">Import</option>
+          <option value="Finance">Finance</option>
+          <option value="IT">IT</option>
+          <option value="IS">IS</option>
+          <option value="BI">BI</option>
+          <option value="Order Fulfillment">Order Fulfillment</option>
+          <option value="Sales">Sales</option>
+        </select>
+        <div class="field-error" id="err-department">Please select your department.</div>
+      </div>
+    </div>
+
+    <div class="submit-wrap">
+      <button type="submit" class="btn-submit" id="submitBtn">
+        <span class="btn-text">Submit Request</span>
+        <span class="btn-arrow">→</span>
+        <div class="spinner"></div>
+      </button>
+      <div class="status-msg" id="statusMsg"></div>
+    </div>
+
+  </form>
+</main>
+
+<footer>
+  If you encounter any difficulties, please contact: Key Contact Person
+  (<a href="mailto:Thanaphat.Sathainphornphann@aviusuld.com">Thanaphat.Sathainphornphann@aviusuld.com</a>)
+</footer>
+
+<script>
+  // ─────────────────────────────────────────────
+  // SHAREPOINT CONFIG — update these values
+  // ─────────────────────────────────────────────
+  const SP_SITE    = 'https://aviusuld.sharepoint.com/sites/TechnologyCommunity';
+  const SP_LIST    = 'AviusULD_Pre_Ticket_Consolidation_TS';
+  const SP_API     = `${SP_SITE}/_api/web/lists/getbytitle('${SP_LIST}')/items`;
+
+  // ─────────────────────────────────────────────
+  // HELPERS
+  // ─────────────────────────────────────────────
+  function updateUnit() {
+    const type = document.getElementById('impactType').value;
+    const hint = document.getElementById('unitHint');
+    if (type === 'Cost Saving')   hint.textContent = 'Estimated monetary saving (USD/THB)';
+    else if (type === 'Time Saving') hint.textContent = 'Estimated saving in Man-Days';
+    else hint.textContent = 'Enter amount';
+  }
+
+  function generateRefNumber() {
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = String(now.getMonth()+1).padStart(2,'0');
+    const d = String(now.getDate()).padStart(2,'0');
+    const rand = Math.floor(1000 + Math.random() * 9000);
+    return 'AVU-' + y + m + d + '-' + rand;
+  }
+
+  function formatDateTime(date) {
+    const pad = n => String(n).padStart(2,'0');
+    return date.getFullYear() + '-' + pad(date.getMonth()+1) + '-' + pad(date.getDate())
+      + ' ' + pad(date.getHours()) + ':' + pad(date.getMinutes()) + ':' + pad(date.getSeconds());
+  }
+
+  // ─────────────────────────────────────────────
+  // VALIDATION
+  // ─────────────────────────────────────────────
+  const fields = ['criteria','requirement','moscow','urgency','userCount','impactType','improvement','fullName','department'];
+
+  function validateField(id) {
+    const el  = document.getElementById(id);
+    const err = document.getElementById('err-' + id);
+    const val = el.value.trim();
+    const valid = val !== '' && !(el.type === 'number' && (isNaN(val) || Number(val) < 1));
+    el.classList.toggle('error', !valid);
+    if (err) err.classList.toggle('visible', !valid);
+    return valid;
+  }
+
+  fields.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.addEventListener('change', () => validateField(id));
+      el.addEventListener('input',  () => validateField(id));
+    }
+  });
+
+  // ─────────────────────────────────────────────
+  // GET SHAREPOINT REQUEST DIGEST (auth token)
+  // ─────────────────────────────────────────────
+  async function getDigest() {
+    const res = await fetch(`${SP_SITE}/_api/contextinfo`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Accept': 'application/json;odata=verbose' }
+    });
+    const json = await res.json();
+    return json.d.GetContextWebInformation.FormDigestValue;
+  }
+
+  // ─────────────────────────────────────────────
+  // SUBMIT TO SHAREPOINT LIST
+  // ─────────────────────────────────────────────
+  async function submitToSharePoint(data) {
+    const digest = await getDigest();
+
+    const payload = {
+      '__metadata': { 'type': `SP.Data.${SP_LIST}ListItem` },
+      'Title':               data.refNumber,
+      'Submission_ID':       data.refNumber,
+      'Submission_DateTime': data.dateTime,
+      'Criteria_of_Request': data.criteria,
+      'Simple_Brief_Requirement': data.requirement,
+      'Priority':            data.moscow,
+      'Urgency':             data.urgency,
+      'Number_of_Users':     data.userCount,
+      'Impact_Type':         data.impactType,
+      'Estimated_Saving':    data.improvement,
+      'User_Full_Name':      data.fullName,
+      'Department':          data.department
+    };
+
+    const res = await fetch(SP_API, {
+      method: 'POST',
+      credentials: 'include',
+      headers: {
+        'Accept':          'application/json;odata=verbose',
+        'Content-Type':    'application/json;odata=verbose',
+        'X-RequestDigest': digest
+      },
+      body: JSON.stringify(payload)
+    });
+
+    if (!res.ok) {
+      const errJson = await res.json().catch(() => ({}));
+      throw new Error(errJson?.error?.message?.value || `HTTP ${res.status}`);
+    }
+    return await res.json();
+  }
+
+  // ─────────────────────────────────────────────
+  // FORM SUBMIT HANDLER
+  // ─────────────────────────────────────────────
+  document.getElementById('requestForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+
+    let allValid = true;
+    fields.forEach(id => { if (!validateField(id)) allValid = false; });
+    if (!allValid) return;
+
+    const btn    = document.getElementById('submitBtn');
+    const status = document.getElementById('statusMsg');
+
+    btn.classList.add('loading');
+    btn.disabled = true;
+    status.textContent = '';
+    status.className = 'status-msg';
+
+    const refNumber = generateRefNumber();
+    const now       = new Date();
+    const dateTime  = formatDateTime(now);
+
+    const data = {
+      refNumber,
+      dateTime,
+      criteria:    document.getElementById('criteria').value,
+      requirement: document.getElementById('requirement').value.trim(),
+      moscow:      document.getElementById('moscow').value,
+      urgency:     document.getElementById('urgency').value,
+      userCount:   Number(document.getElementById('userCount').value),
+      impactType:  document.getElementById('impactType').value,
+      improvement: Number(document.getElementById('improvement').value),
+      fullName:    document.getElementById('fullName').value.trim(),
+      department:  document.getElementById('department').value,
+    };
+
+    try {
+      await submitToSharePoint(data);
+      sessionStorage.setItem('avisuld_submission', JSON.stringify(data));
+      window.location.href = 'confirmation.html';
+    } catch (err) {
+      console.error(err);
+      status.textContent = '⚠ Submission failed: ' + err.message + '. Please try again or contact the BI Team.';
+      status.className = 'status-msg error';
+      btn.classList.remove('loading');
+      btn.disabled = false;
+    }
+  });
+</script>
+</body>
+</html>
