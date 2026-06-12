@@ -18,9 +18,9 @@
   }
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: 'DM Sans', sans-serif; background: var(--bg-primary); color: var(--text-primary); min-height: 100vh; display: flex; flex-direction: column; -webkit-font-smoothing: antialiased; }
-  nav { background: var(--bg-secondary); border-bottom: 1px solid var(--border); padding: 0 32px; height: 64px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; }
+  nav { background: rgb(83,86,91); border-bottom: 1px solid var(--border); padding: 0 32px; height: 64px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; }
   nav img.logo { height: 40px; width: auto; object-fit: contain; display: block; }
-  .nav-badge { font-size: 10px; font-weight: 600; letter-spacing: 0.8px; text-transform: uppercase; color: var(--accent); background: var(--accent-dim); border: 1px solid var(--accent-border); padding: 4px 12px; border-radius: 20px; }
+  .nav-badge { font-size: 10px; font-weight: 600; letter-spacing: 0.8px; text-transform: uppercase; color: var(--accent); background: rgb(45,47,51); border: 1px solid rgba(0,193,159,0.3); padding: 4px 12px; border-radius: 20px; }
   main { flex: 1; padding: 48px 24px 80px; max-width: 680px; margin: 0 auto; width: 100%; }
   .page-header { text-align: center; margin-bottom: 40px; animation: fadeUp 0.5s ease both; }
   .page-header h1 { font-size: 28px; font-weight: 600; letter-spacing: -0.5px; color: var(--text-primary); margin-bottom: 10px; }
@@ -158,10 +158,32 @@
           </select>
           <div class="field-error" id="err-impactType">Please select an impact type.</div>
         </div>
-        <div class="impact-box">
+        <!-- TIME SAVING: single box -->
+        <div class="impact-box" id="boxTimeSaving" style="display:none;">
           <div class="field-label">Estimated Saving <span class="required">*</span></div>
           <input type="number" id="improvement" name="improvement" min="0" placeholder="e.g. 10"/>
           <div class="unit-hint" id="unitHint">Enter amount</div>
+          <div class="field-error" id="err-improvement">Please enter an estimated value.</div>
+        </div>
+        <!-- COST SAVING: two currency boxes -->
+        <div id="boxCostSaving" style="display:none;">
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+            <div class="impact-box">
+              <div class="field-label">THB <span class="required">*</span></div>
+              <input type="text" id="amountTHB" min="0" placeholder="e.g. 33,000" oninput="convertFromTHB(this)"/>
+              <div class="unit-hint">Thai Baht</div>
+            </div>
+            <div class="impact-box">
+              <div class="field-label">USD <span class="required">*</span></div>
+              <div style="position:relative;">
+                <span style="position:absolute;left:14px;top:50%;transform:translateY(-50%);color:var(--text-primary);font-size:14px;pointer-events:none;">$</span>
+                <input type="text" id="amountUSD" min="0" placeholder="e.g. 1,000" oninput="convertFromUSD(this)" style="padding-left:26px;"/>
+              </div>
+              <div class="unit-hint">US Dollar</div>
+            </div>
+          </div>
+          <div class="unit-hint" style="margin-top:8px; color: var(--accent);">Rate: 33 THB = 1 USD</div>
+          <input type="hidden" id="improvement" name="improvement" value="0"/>
           <div class="field-error" id="err-improvement">Please enter an estimated value.</div>
         </div>
       </div>
@@ -195,6 +217,10 @@
           <option value="BI">BI</option>
           <option value="Order Fulfillment">Order Fulfillment</option>
           <option value="Sales">Sales</option>
+          <option value="Accountant">Accountant</option>
+          <option value="Sourcing">Sourcing</option>
+          <option value="R&D">R&D</option>
+          <option value="Trip&Co.">Trip&Co.</option>
         </select>
         <div class="field-error" id="err-department">Please select your department.</div>
       </div>
@@ -215,13 +241,60 @@
 </footer>
 <script>
   const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwbx8edWb0jpelWZbovl8pTlq2J9OLsNc7rDVrPx7vphD22UJHoXZ2-fwITmSPL1dq7/exec';
+  const THB_USD_RATE = 33;
 
   function updateUnit() {
     const type = document.getElementById('impactType').value;
-    const hint = document.getElementById('unitHint');
-    if (type === 'Cost Saving') hint.textContent = 'Estimated monetary saving (USD/THB)';
-    else if (type === 'Time Saving') hint.textContent = 'Estimated saving in Man-Days';
-    else hint.textContent = 'Enter amount';
+    const boxTime = document.getElementById('boxTimeSaving');
+    const boxCost = document.getElementById('boxCostSaving');
+
+    if (type === 'Time Saving') {
+      boxTime.style.display = 'block';
+      boxCost.style.display = 'none';
+      document.getElementById('unitHint').textContent = 'Estimated saving in Man-Days';
+      // clear cost fields
+      document.getElementById('amountTHB').value = '';
+      document.getElementById('amountUSD').value = '';
+    } else if (type === 'Cost Saving') {
+      boxTime.style.display = 'none';
+      boxCost.style.display = 'block';
+      // clear time field
+      document.getElementById('improvement').value = '';
+    } else {
+      boxTime.style.display = 'none';
+      boxCost.style.display = 'none';
+    }
+  }
+
+  function formatWithCommas(num) {
+    if (!num && num !== 0) return '';
+    return num.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+  }
+
+  function parseFormatted(str) {
+    return parseFloat((str || '').replace(/,/g, '')) || 0;
+  }
+
+  function convertFromTHB(el) {
+    // Allow only numbers and commas while typing
+    let raw = el.value.replace(/[^0-9.]/g, '');
+    const thb = parseFloat(raw) || 0;
+    const usd = thb > 0 ? thb / THB_USD_RATE : 0;
+    // Format THB with commas after typing
+    const cursor = el.selectionStart;
+    el.value = raw ? formatWithCommas(thb) : '';
+    // Update USD
+    document.getElementById('amountUSD').value = usd > 0 ? formatWithCommas(parseFloat(usd.toFixed(2))) : '';
+    document.getElementById('improvement').value = thb;
+  }
+
+  function convertFromUSD(el) {
+    let raw = el.value.replace(/[^0-9.]/g, '');
+    const usd = parseFloat(raw) || 0;
+    const thb = usd > 0 ? usd * THB_USD_RATE : 0;
+    el.value = raw ? formatWithCommas(usd) : '';
+    document.getElementById('amountTHB').value = thb > 0 ? formatWithCommas(parseFloat(thb.toFixed(2))) : '';
+    document.getElementById('improvement').value = thb;
   }
 
   function generateRefNumber() {
@@ -244,6 +317,24 @@
   function validateField(id) {
     const el = document.getElementById(id);
     const err = document.getElementById('err-' + id);
+
+    // Special case: improvement validation depends on impact type
+    if (id === 'improvement') {
+      const type = document.getElementById('impactType').value;
+      let valid = true;
+      if (type === 'Cost Saving') {
+        const thb = parseFloat(document.getElementById('amountTHB').value) || 0;
+        const usd = parseFloat(document.getElementById('amountUSD').value) || 0;
+        valid = thb > 0 || usd > 0;
+      } else if (type === 'Time Saving') {
+        valid = el.value.trim() !== '' && Number(el.value) >= 1;
+      } else {
+        valid = false;
+      }
+      if (err) err.classList.toggle('visible', !valid);
+      return valid;
+    }
+
     const val = el.value.trim();
     const valid = val !== '' && !(el.type === 'number' && (isNaN(val) || Number(val) < 1));
     el.classList.toggle('error', !valid);
@@ -276,6 +367,16 @@
     const now = new Date();
     const dateTime = formatDateTime(now);
 
+    const impactType = document.getElementById('impactType').value;
+    let estimatedSaving;
+    if (impactType === 'Cost Saving') {
+      const thb = parseFormatted(document.getElementById('amountTHB').value);
+      const usd = parseFormatted(document.getElementById('amountUSD').value);
+      estimatedSaving = `THB ${formatWithCommas(thb)} / $${formatWithCommas(parseFloat(usd.toFixed(2)))}`;
+    } else {
+      estimatedSaving = Number(document.getElementById('improvement').value);
+    }
+
     const data = {
       Submission_ID:            refNumber,
       Submission_DateTime:      dateTime,
@@ -284,8 +385,8 @@
       Priority:                 document.getElementById('moscow').value,
       Urgency:                  document.getElementById('urgency').value,
       Number_of_Users:          Number(document.getElementById('userCount').value),
-      Impact_Type:              document.getElementById('impactType').value,
-      Estimated_Saving:         Number(document.getElementById('improvement').value),
+      Impact_Type:              impactType,
+      Estimated_Saving:         estimatedSaving,
       User_Full_Name:           document.getElementById('fullName').value.trim(),
       Department:               document.getElementById('department').value,
     };
